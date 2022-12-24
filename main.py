@@ -21,6 +21,8 @@ SCOPES = ['https://www.googleapis.com/auth/drive']
 
 def retrieve_pdf_info(file_path):
     '''Retrieve the pdf info from the file_path.''' 
+    if(file_path == ''):
+        return
     pdfFileObj = open(file_path, 'rb')
     subprocess.Popen([file_path],shell=True)
 def retrieve_folders(service, root_folder_name):
@@ -71,9 +73,11 @@ def char_to_int(char):
     """
     return ord(char)
 def find_folder(folder, folders):
+    print(folder.name)
     for f in folders:
         if f.id == folder.id:
             return f
+    print("name not found")
     return None
 
 #CLASS
@@ -92,11 +96,12 @@ class Windows:
         write: Write text in the dialog box label.
         clear: Clear the dialog box label.
     '''
-    def __init__(self, window,send_button, dialog_box, pdf_info):
+    def __init__(self, window,send_button, dialog_box, pdf_info, date_prompt):
         self.send_button = send_button
         self.dialog_box = dialog_box
         self.window = window
         self.pdf_info = pdf_info
+        self.date_prompt = date_prompt
     def redraw(self):
         self.window.update()
     def write(self, text):
@@ -108,6 +113,11 @@ class Windows:
         self.send_button.config(bg=color)
     def write_pdf_info(self, text):
         self.pdf_info.configure(text= text)
+    def get_date(self):
+        if self.date_prompt.get() == '':
+            return datetime.datetime.now().strftime("%m-%Y")
+        else:
+            return self.date_prompt.get()
 
 class FileOrganiser:
     '''Single object to manage the file upload to the Google Drive right folder.
@@ -207,9 +217,13 @@ class FileOrganiser:
                 if(len(selected_folders[i].from_index) <= char_index or len(selected_folders[i].to_index) <= char_index):
                     continue
                 if(selected_folders[i].from_index[char_index] == selected_folders[i].to_index[char_index] and selected_folders[i].from_index[char_index] != char_integer):
-                    returned_folder.remove(find_folder(selected_folders[i], returned_folder))
+                    f = find_folder(selected_folders[i], returned_folder)
+                    if f != None:
+                        returned_folder.remove(f)
                 elif selected_folders[i].from_index[char_index] > char_integer or selected_folders[i].to_index[char_index] < char_integer:
-                    returned_folder.remove(find_folder(selected_folders[i], returned_folder))
+                    f = find_folder(selected_folders[i], returned_folder)
+                    if f != None:
+                        returned_folder.remove(f)
             
             char_index += 1
         if len(returned_folder) == 1:
@@ -233,6 +247,7 @@ class FileOrganiser:
             name (str): The name of the file to upload.
             activity (str): The activity of the file to upload.
         """
+
         # Create the file metadata
         if(name == None or name == ''):
             self.windows.write("\u2612Aucun nom de fichier sélectionné")
@@ -245,10 +260,10 @@ class FileOrganiser:
         folder = self.class_files(name, root_folder["subfolders"])
         if(folder == None):
             return
-       
+        print(folder.name)
         #create custom name Month-Year - name - activity
         date = datetime.datetime.now()
-        name_to_sort = str(date.month)+"-"+str(date.year)+"-"+str(activity)+"-"+name
+        name_to_sort = str(self.windows.get_date())+"-"+str(activity)+"-"+name
         self.upload_file(self.file_to_sort, folder.id, name_to_sort, name)
 class Folder:
     """A class to represent a folder.
@@ -282,6 +297,8 @@ class Folder:
 # Action method
 def browse_file(organiser):
     file_path = filedialog.askopenfilename()
+    if(file_path == ""):
+        return
     organiser.set_file_to_sort(file_path)
     organiser.windows.write("\u2611Fichier sélectionné")
     organiser.windows.write_pdf_info(retrieve_pdf_info(file_path))
@@ -369,8 +386,13 @@ def main():
     #Info pdf box
     info_pdf_box = tk.Label(window, text="Aucun fichier sélectionné")
 
+    category_entry = tk.Entry(window)
+
+
     #Creation d'un text dialog avec texte modifiable
     dialog_box = tk.Label(window, text="Historique\nAucun fichier sélectionné")
+
+    date_prompt = tk.Entry(window)
 
     # Encodage des caractères
     window.option_add("*tearOff", False)
@@ -380,12 +402,27 @@ def main():
     dropdown = tk.OptionMenu(window, selected, *categories)
     root_selection = tk.OptionMenu(window, root_selected, *rootFolders)
     browse_button = tk.Button(text="Parcourir", command= lambda : browse_file(organizer))
-    send_button = tk.Button(text="Envoyer", command= lambda  : send_file(organizer, name_entry.get(), selected.get(), root_folders[root_selected.get()]))
+    send_button = tk.Button(text="Envoyer", command= lambda  : send_file(organizer, name_entry.get(), selected.get() if category_entry.get() == "" else category_entry.get() , root_folders[root_selected.get()]))
+
+    #Infobox
+    infobox_category = tk.Label(window, text="Catégorie")
+    infobox_name = tk.Label(window, text="Nom")
+    infobox_root = tk.Label(window, text="Dossier racine")
+    infobox_date = tk.Label(window, text="Date")
 
     # Packing all items on the left side vertically
+    infobox_name.pack()
     name_entry.pack()
-    dropdown.pack()
+    infobox_root.pack()
     root_selection.pack()
+    infobox_category.pack()
+    category_entry.pack()
+    dropdown.pack()
+
+
+    infobox_date.pack()
+    date_prompt.pack()
+
     browse_button.pack()
     send_button.pack()
     dialog_box.pack()
@@ -395,7 +432,7 @@ def main():
 
 
     # Set windows
-    organizer.set_windows(Windows(window,send_button,dialog_box, info_pdf_box))
+    organizer.set_windows(Windows(window,send_button,dialog_box, info_pdf_box, date_prompt))
 
     # Affichage de la fenêtre
     window.mainloop()
