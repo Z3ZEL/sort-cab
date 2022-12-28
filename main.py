@@ -195,6 +195,11 @@ class FileOrganiser:
         except HttpError as error:
             self.windows.write('\u2612Erreur lors du téléversement du fichier: '+ error)
             self.windows.change_button_color("red")
+
+        #add a line in history.txt file
+        with open('history.txt', 'a') as file:
+            file.writelines(file_name)
+        
     def class_files(self, name, folders):
         """Classify the files into their respective folders.
 
@@ -260,7 +265,7 @@ class FileOrganiser:
         folder = self.class_files(name, root_folder["subfolders"])
         if(folder == None):
             return
-        print(folder.name)
+        self.windows.write("\u2611Dossier trouvé: "+folder.name)
         #create custom name Month-Year - name - activity
         date = datetime.datetime.now()
         name_to_sort = str(self.windows.get_date())+"-"+str(activity)+"-"+name
