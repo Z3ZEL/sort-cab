@@ -198,7 +198,7 @@ class FileOrganiser:
 
         #add a line in history.txt file
         with open('history.txt', 'a') as file:
-            file.writelines(file_name)
+            file.writelines(file_name + '\n')
         
     def class_files(self, name, folders):
         """Classify the files into their respective folders.
